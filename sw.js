@@ -1,4 +1,4 @@
-const CACHE = 'hnp-v80';
+const CACHE = 'hnp-v81';
 const PRECACHE = [
   '/',
   '/index.html',

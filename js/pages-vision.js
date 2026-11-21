@@ -1,5 +1,6 @@
 (function () {
-  const DEFAULT_WORKER = 'https://nutrition-food.roxanasagha.workers.dev';
+  const DEFAULT_WORKER = 'https://healthy-nutrition-openrouter.nasrmohammad4804.workers.dev';
+  const STATIC_SITE_WORKER = 'nutrition-food.roxanasagha.workers.dev';
   const MODELS = [
     'google/gemma-4-31b-it:free',
     'nvidia/nemotron-3.5-super-vl:free',
@@ -218,7 +219,9 @@ List EACH food separately. Never merge different foods. Include sauces and garni
 
   function workerBase() {
     const fromConfig = window.HNP_OPENROUTER && window.HNP_OPENROUTER.workerUrl;
-    return String(fromConfig || DEFAULT_WORKER).replace(/\/$/, '');
+    const base = String(fromConfig || DEFAULT_WORKER).replace(/\/$/, '');
+    if (base.toLowerCase().includes(STATIC_SITE_WORKER)) return DEFAULT_WORKER;
+    return base || DEFAULT_WORKER;
   }
 
   function optionalGrams(value) {

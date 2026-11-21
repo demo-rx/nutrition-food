@@ -174,8 +174,19 @@ async function readApiJson(response) {
   }
 }
 
+function isStaticScanHost() {
+  const host = String(location.hostname || '');
+  return host.endsWith('github.io') || host.endsWith('workers.dev');
+}
+
 function pagesVisionOn() {
   return Boolean(window.HNP_PAGES_VISION && window.HNP_PAGES_VISION.enabled());
+}
+
+function requirePagesVision() {
+  if (!isStaticScanHost()) return;
+  if (pagesVisionOn()) return;
+  throw new Error(I18N.t('err.htmlResponse'));
 }
 
 function showError(message) {
@@ -366,6 +377,7 @@ async function estimateAndShowEditForm() {
   setLoadingMessage('load.estimate');
 
   try {
+    requirePagesVision();
     let data;
     if (pagesVisionOn()) {
       data = await window.HNP_PAGES_VISION.estimate(capturedBlob);
@@ -484,6 +496,7 @@ async function analyzeFood() {
   elements.btnConfirmManual.disabled = true;
 
   try {
+    requirePagesVision();
     let data;
     if (pagesVisionOn()) {
       const portionInfo = { mode: portionMode };

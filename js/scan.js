@@ -155,7 +155,27 @@ function mapScanError(message) {
   if (/file too large|LIMIT_FILE_SIZE|payload too large|entity too large/i.test(text)) {
     return I18N.t('err.fileSize');
   }
+  if (/Unexpected token\s+'<'|is not valid JSON|<html/i.test(text)) {
+    return I18N.t('err.htmlResponse');
+  }
   return text;
+}
+
+async function readApiJson(response) {
+  const raw = await response.text();
+  const trimmed = String(raw || '').trim();
+  if (!trimmed || trimmed.startsWith('<')) {
+    throw new Error(I18N.t('err.htmlResponse'));
+  }
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    throw new Error(I18N.t('err.htmlResponse'));
+  }
+}
+
+function pagesVisionOn() {
+  return Boolean(window.HNP_PAGES_VISION && window.HNP_PAGES_VISION.enabled());
 }
 
 function showError(message) {
@@ -345,18 +365,21 @@ async function estimateAndShowEditForm() {
   showStep('loading');
   setLoadingMessage('load.estimate');
 
-  const formData = new FormData();
-  formData.append('photo', capturedBlob, 'food.jpg');
-
   try {
-    const response = await fetch(apiUrl('/api/estimate-plate'), {
-      method: 'POST',
-      body: formData,
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.error || 'Estimation failed');
+    let data;
+    if (pagesVisionOn()) {
+      data = await window.HNP_PAGES_VISION.estimate(capturedBlob);
+    } else {
+      const formData = new FormData();
+      formData.append('photo', capturedBlob, 'food.jpg');
+      const response = await fetch(apiUrl('/api/estimate-plate'), {
+        method: 'POST',
+        body: formData,
+      });
+      data = await readApiJson(response);
+      if (!response.ok) {
+        throw new Error(data.error || 'Estimation failed');
+      }
     }
 
     renderPlateEditForm(data);
@@ -460,20 +483,26 @@ async function analyzeFood() {
   elements.btnAnalyze.disabled = true;
   elements.btnConfirmManual.disabled = true;
 
-  const formData = new FormData();
-  formData.append('photo', capturedBlob, 'food.jpg');
-  appendPortionToFormData(formData);
-
   try {
-    const response = await fetch(apiUrl('/api/analyze-food'), {
-      method: 'POST',
-      body: formData,
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Analysis failed');
+    let data;
+    if (pagesVisionOn()) {
+      const portionInfo = { mode: portionMode };
+      if (portionMode === 'manual') {
+        portionInfo.items = getConfirmedItems();
+      }
+      data = await window.HNP_PAGES_VISION.analyze(capturedBlob, portionInfo);
+    } else {
+      const formData = new FormData();
+      formData.append('photo', capturedBlob, 'food.jpg');
+      appendPortionToFormData(formData);
+      const response = await fetch(apiUrl('/api/analyze-food'), {
+        method: 'POST',
+        body: formData,
+      });
+      data = await readApiJson(response);
+      if (!response.ok) {
+        throw new Error(data.error || 'Analysis failed');
+      }
     }
 
     renderResults(data);

@@ -1,7 +1,7 @@
 (function () {
  
 
-const DEFAULT_WORKER = 'https://nutrition-food.roxanasagha.workers.dev';
+const DEFAULT_WORKER = 'https://nutrition-food-api.roxanasagha.workers.dev';
 
   const STATIC_SITE_WORKER = 'nutrition-food.roxanasagha.workers.dev';
   const MODELS = [

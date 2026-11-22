@@ -1,5 +1,5 @@
 (function () {
-  const DEFAULT_WORKER = 'https://healthy-nutrition-openrouter.nasrmohammad4804.workers.dev';
+  const DEFAULT_WORKER = 'https://healthy-nutrition-openrouter.roxanasagha.workers.dev';
   const STATIC_SITE_WORKER = 'nutrition-food.roxanasagha.workers.dev';
   const MODELS = [
     'google/gemma-4-31b-it:free',

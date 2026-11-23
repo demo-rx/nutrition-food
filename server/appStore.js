@@ -8,8 +8,8 @@ const SEED = {
   users: {},
   sessions: {},
   ads: [
-    { slot: 'home-top', title: 'تمرین با مربی', href: 'coaches.html', image: '/assets/ad-home-top.jpg', text: 'برنامه ورزشی و تغذیه کنار هم' },
-    { slot: 'home-banner', title: 'مربی ورزش و تغذیه', href: 'coaches.html', image: '/assets/ad-home-coach.jpg', text: 'برنامه تمرینی و رژیم شخصی از مربی‌های اپ' },
+    { slot: 'home-top', title: 'تمرین با مربی', href: 'coaches.html', image: 'assets/ad-home-top.jpg', text: 'برنامه ورزشی و تغذیه کنار هم' },
+    { slot: 'home-banner', title: 'مربی ورزش و تغذیه', href: 'coaches.html', image: 'assets/ad-home-coach.jpg', text: 'برنامه تمرینی و رژیم شخصی از مربی‌های اپ' },
     {
       slot: 'plan-banner',
       title: 'مکمل و رستوران سالم',

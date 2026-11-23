@@ -1,0 +1,38 @@
+{
+  "ads": [
+    {
+      "slot": "home-top",
+      "title": "تمرین با مربی",
+      "href": "coaches.html",
+      "image": "assets/ad-home-top.jpg",
+      "text": "برنامه ورزشی و تغذیه کنار هم"
+    },
+    {
+      "slot": "home-banner",
+      "title": "مربی ورزش و تغذیه",
+      "href": "coaches.html",
+      "image": "assets/ad-home-coach.jpg",
+      "text": "برنامه تمرینی و رژیم شخصی از مربی‌های اپ"
+    },
+    {
+      "slot": "plan-banner",
+      "title": "مکمل و رستوران سالم",
+      "href": "#",
+      "image": "assets/ad-plan-protein.jpg",
+      "text": "اسلایدر تبلیغ پلنر",
+      "slides": [
+        { "title": "پروتئین گیاهی", "href": "#", "image": "assets/ad-plan-protein.jpg", "text": "مکمل بازیابی بعد از تمرین" },
+        { "title": "ویتامین روزانه", "href": "#", "image": "assets/ad-plan-vitamins.jpg", "text": "مکمل طبیعی برای انرژی" },
+        { "title": "پوکه‌بول سالم", "href": "#", "image": "assets/ad-plan-bowl.jpg", "text": "رستوران غذاهای هلثی" },
+        { "title": "سالاد گریل", "href": "#", "image": "assets/ad-plan-salad.jpg", "text": "غذای سالم بیرون از خانه" }
+      ]
+    },
+    {
+      "slot": "coach-banner",
+      "title": "جایگاه تبلیغ مربی",
+      "href": "#",
+      "image": "",
+      "text": "اسپانسر صفحه مربی"
+    }
+  ]
+}

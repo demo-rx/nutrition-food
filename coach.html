@@ -6,7 +6,7 @@
   <title>مربی | Healthy Nutrition Plan</title>
   <link rel="stylesheet" href="css/app.css">
   <link rel="stylesheet" href="css/platform.css">
-  <link rel="icon" type="image/png" href="/assets/logo-mark.png">
+  <link rel="icon" type="image/png" href="assets/logo-mark.png">
   <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -53,6 +53,7 @@
   <script src="js/i18n.js"></script>
   <script src="js/account.js"></script>
   <script src="js/ads.js"></script>
+  <script src="js/coaches-api.js"></script>
   <script>
     const id = new URLSearchParams(location.search).get('id');
     const token = () => (HNP.currentUser() || {}).token;
@@ -80,10 +81,11 @@
       }).join('');
     }
     async function load() {
-      const res = await fetch('/api/coaches/' + encodeURIComponent(id));
-      const data = await res.json();
-      const c = data.coach;
-      if (!c) return;
+      const c = id ? await HNP_COACHES.getCoach(id) : null;
+      if (!c) {
+        document.getElementById('title').textContent = 'مربی پیدا نشد';
+        return;
+      }
       document.getElementById('title').textContent = c.name;
       const photo = document.getElementById('photo');
       if (c.photo) { photo.hidden = false; photo.src = c.photo; photo.alt = c.name; }
@@ -132,16 +134,9 @@
     }
     async function claimDiet() {
       const msg = document.getElementById('msg');
-      const coachRes = await fetch('/api/coaches/' + encodeURIComponent(id));
-      const coachData = await coachRes.json();
-      const coach = coachData.coach;
-      const res = await fetch('/api/me/coach', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
-        body: JSON.stringify({ coachId: id }),
-      });
-      const data = await res.json();
-      if (res.ok && coach?.planFile) {
+      const coach = await HNP_COACHES.getCoach(id);
+      const claimed = await HNP_COACHES.claimCoach(id, token());
+      if (claimed.ok && coach?.planFile) {
         HNP.addOwnedPlan({
           coachId: coach.id,
           name: coach.planName || 'رژیم مربی',
@@ -150,9 +145,9 @@
         });
       }
       msg.hidden = false;
-      msg.textContent = res.ok
+      msg.textContent = claimed.ok
         ? 'خرید انجام شد. فایل رژیم پیش تو ماند و برنامهٔ غذایی عوض نشد.'
-        : data.error;
+        : (claimed.error || 'خرید ثبت نشد');
       await load();
     }
     paintStars();
@@ -168,15 +163,20 @@
         location.href = 'login.html?next=' + encodeURIComponent('coach.html?id=' + id);
         return;
       }
-      const res = await fetch('/api/coaches/' + encodeURIComponent(id) + '/reviews', {
-        method: 'POST',
+      const text = document.getElementById('review-text').value;
+      const posted = await HNP_COACHES.postReview(id, {
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
-        body: JSON.stringify({ stars: reviewStars, text: document.getElementById('review-text').value }),
+        body: JSON.stringify({ stars: reviewStars, text }),
+        entry: {
+          name: (HNP.currentUser() || {}).name || 'ورزشکار',
+          stars: reviewStars,
+          text: String(text || '').trim(),
+          at: Date.now(),
+        },
       });
-      const data = await res.json().catch(() => ({}));
       msg.hidden = false;
-      msg.textContent = res.ok ? 'نظرت ثبت شد.' : (data.error || 'نظر ثبت نشد');
-      if (res.ok) {
+      msg.textContent = posted.ok ? 'نظرت ثبت شد.' : (posted.error || 'نظر ثبت نشد');
+      if (posted.ok) {
         document.getElementById('review-text').value = '';
         await load();
       }

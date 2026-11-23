@@ -1,0 +1,41 @@
+{
+  "coaches": [
+    {
+      "id": "coach-nima",
+      "name": "نیما رضایی",
+      "title": "مربی بدنسازی و تغذیه",
+      "photo": "assets/coach-nima.jpg",
+      "rating": 4.8,
+      "specialty": "بدنسازی و تغذیه ورزشی",
+      "style": "پروتئین بالا، وعده‌های منظم و بازیابی بعد از تمرین",
+      "audience": "مناسب کسی که تمرین قدرتی دارد و می‌خواهد بدون رژیم خیلی سخت عضله بسازد",
+      "bio": "برنامه غذایی ورزشی با تمرکز روی پروتئین و بازیابی.",
+      "planFile": "assets/plans/nima-plan.txt",
+      "planName": "رژیم پروتئین نیما",
+      "athleteCount": 24,
+      "reviews": [],
+      "videos": [
+        { "title": "گرم‌کردن قبل تمرین", "url": "https://www.youtube.com/embed/2eA2KoM9NhU" },
+        { "title": "حرکات قدرتی مبتدی", "url": "https://www.youtube.com/embed/IODxDxX7oi4" }
+      ]
+    },
+    {
+      "id": "coach-sara",
+      "name": "سارا محمدی",
+      "title": "مربی فیتنس",
+      "photo": "assets/coach-sara.jpg",
+      "rating": 4.6,
+      "specialty": "کاهش چربی و تناسب اندام",
+      "style": "رژیم متعادل، حجم غذای کافی و بدون حذف کامل کربوهیدرات",
+      "audience": "مناسب کسی که می‌خواهد چربی کم کند و وسط روز بی‌انرژی نشود",
+      "bio": "رژیم متعادل برای کاهش چربی بدون افت انرژی.",
+      "planFile": "assets/plans/sara-plan.txt",
+      "planName": "رژیم تعادل سارا",
+      "athleteCount": 18,
+      "reviews": [],
+      "videos": [
+        { "title": "تمرین هوازی در خانه", "url": "https://www.youtube.com/embed/ml6cT4AZdqI" }
+      ]
+    }
+  ]
+}

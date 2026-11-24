@@ -125,11 +125,29 @@
     }
   }
 
+  async function saveOwnCoach(id, form) {
+    const token = (window.HNP && HNP.currentUser() || {}).token;
+    if (!token) return { ok: false, error: 'وارد شو' };
+    try {
+      const response = await fetch(`${apiBase()}/api/coaches/${encodeURIComponent(id)}/self`, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token },
+        body: form,
+      });
+      const data = await readJson(response);
+      if (response.ok) return { ok: true, coach: data?.coach ? normalizeCoach(data.coach) : null };
+      return { ok: false, error: data?.error || 'ذخیره نشد' };
+    } catch {
+      return { ok: false, error: 'ذخیره نشد' };
+    }
+  }
+
   window.HNP_COACHES = {
     listCoaches,
     getCoach,
     postReview,
     claimCoach,
+    saveOwnCoach,
     publicAsset,
   };
 })();

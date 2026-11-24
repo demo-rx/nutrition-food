@@ -128,6 +128,36 @@ function athleteCount(data, coachId) {
   ).length;
 }
 
+function ensureCoachRecord(data, user) {
+  if (!user || user.role !== 'coach') return null;
+  if (!Array.isArray(data.coaches)) data.coaches = [];
+  const email = String(user.email || '').trim().toLowerCase();
+  if (!email) return null;
+  const found = data.coaches.find(
+    (coach) => String(coach.accountEmail || '').trim().toLowerCase() === email
+  );
+  if (found) return found;
+  const slug = String(user.id || Date.now()).replace(/[^a-z0-9-]/gi, '') || String(Date.now());
+  const card = {
+    id: `coach-${slug}`,
+    name: user.name || 'مربی',
+    title: 'مربی تغذیه',
+    photo: '',
+    rating: null,
+    specialty: 'تغذیه ورزشی',
+    style: '',
+    audience: '',
+    bio: 'این مربی خودش در اپ ثبت‌نام کرده است.',
+    planFile: '',
+    planName: '',
+    videos: [],
+    reviews: [],
+    accountEmail: email,
+  };
+  data.coaches.push(card);
+  return card;
+}
+
 module.exports = {
   load,
   save,
@@ -136,5 +166,6 @@ module.exports = {
   publicUser,
   isAdmin,
   athleteCount,
+  ensureCoachRecord,
   SEED,
 };

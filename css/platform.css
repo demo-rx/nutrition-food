@@ -157,6 +157,71 @@
   background: #fff; border: 1px solid var(--green-100); border-radius: 16px; padding: 1rem;
   display: flex; flex-direction: column; gap: 0.45rem; text-decoration: none; color: inherit;
 }
+.price-card[hidden], .coach-file[hidden],
+#reviews[hidden], #count[hidden], #rate[hidden],
+.ad-slot[hidden], #diet-price[hidden], #diet-buy-note[hidden],
+#diet[hidden], #diet-buy[hidden] {
+  display: none !important;
+}
+#diet-buy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.own-chip {
+  margin: 0 auto;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #166534;
+}
+.own-chip[hidden], .own-pen-slot[hidden], .own-pen-fab[hidden], #own-plan-pick[hidden] {
+  display: none !important;
+}
+.own-pen {
+  width: 1rem;
+  height: 1rem;
+  display: inline-block;
+  vertical-align: -0.15em;
+  margin-inline-start: 0.28rem;
+  color: #16a34a;
+  flex-shrink: 0;
+}
+.own-pen-slot {
+  display: inline-flex;
+  align-items: center;
+  color: #16a34a;
+}
+.bmi-like .own-pen-slot { width: auto; }
+.photo-wrap {
+  position: relative;
+  width: 96px;
+  margin: 0 auto;
+}
+.own-pen-fab {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #fff;
+  color: #16a34a;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 4px 12px rgba(20, 83, 45, 0.16);
+  pointer-events: none;
+}
+.own-pen-fab .own-pen { margin: 0; width: 14px; height: 14px; }
+.own-live {
+  cursor: text;
+  border-radius: 8px;
+  outline: none;
+}
+.own-live:hover { background: rgba(22, 163, 74, 0.08); }
+.own-live:focus { background: rgba(22, 163, 74, 0.12); }
+.own-live.own-empty { color: #94a3b8; }
+.coach-photo.own-live { cursor: pointer; }
+#diet-name.own-live { cursor: text; }
 .price-card strong, .count { color: var(--green-700); font-size: 1.15rem; }
 .coach-card { flex-direction: row; align-items: center; gap: 0.75rem; }
 .coach-card .coach-copy { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }

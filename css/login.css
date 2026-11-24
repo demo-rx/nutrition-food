@@ -93,6 +93,9 @@ body:has(.login-page) #hnp-feedback { display: none; }
   color: #052e16;
   box-shadow: 0 4px 12px rgba(20, 83, 45, 0.08);
 }
+.login-role {
+  margin-top: -0.15rem;
+}
 
 .login-card {
   display: flex;

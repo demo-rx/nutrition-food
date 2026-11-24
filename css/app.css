@@ -111,6 +111,9 @@ body {
   font-family: 'Vazirmatn', system-ui, sans-serif;
 }
 
+.btn[hidden] {
+  display: none !important;
+}
 .btn {
   display: inline-flex;
   align-items: center;

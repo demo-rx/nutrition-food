@@ -7,6 +7,7 @@ const otp = require('./smsOtp');
 
 const DRAFT_DIR = path.join(__dirname, 'data', 'drafts');
 const PUBLIC_PLAN_DIR = path.join(__dirname, '..', 'assets', 'plans');
+const COACH_PHOTO_DIR = path.join(__dirname, '..', 'assets', 'coaches');
 
 const uploadDraft = multer({
   storage: multer.memoryStorage(),
@@ -265,6 +266,26 @@ function athleteReview(user, dates) {
   };
 }
 
+function requireCoachOwner(req, res, coachId) {
+  const ctx = authUser(req);
+  if (!ctx) {
+    res.status(401).json({ error: 'وارد شو' });
+    return null;
+  }
+  const coach = (ctx.data.coaches || []).find((item) => item.id === coachId);
+  if (!coach) {
+    res.status(404).json({ error: 'مربی پیدا نشد' });
+    return null;
+  }
+  const email = String(ctx.user.email || '').trim().toLowerCase();
+  const owns = email && String(coach.accountEmail || '').trim().toLowerCase() === email;
+  if (!owns) {
+    res.status(403).json({ error: 'فقط صفحهٔ خودت را می‌توانی عوض کنی' });
+    return null;
+  }
+  return { ...ctx, coach };
+}
+
 function requireAdmin(req, res) {
   const ctx = authUser(req);
   if (!ctx) {
@@ -306,6 +327,7 @@ function mountPlatform(app) {
       bundle: {},
     };
     data.users[key] = user;
+    store.ensureCoachRecord(data, user);
     const tok = token();
     data.sessions[tok] = { email: key, at: Date.now() };
     store.save(data);
@@ -344,6 +366,7 @@ function mountPlatform(app) {
     const phone = normalizePhone(req.body.phone);
     const mode = req.body.mode === 'signup' ? 'signup' : 'login';
     const name = String(req.body.name || '').trim();
+    const role = req.body.role === 'coach' ? 'coach' : 'athlete';
     if (!phone) return res.status(400).json({ error: 'شماره موبایل را بنویس' });
     const checked = otp.consume(phone, req.body.code);
     if (checked.error) return res.status(checked.status || 400).json({ error: checked.error });
@@ -358,7 +381,7 @@ function mountPlatform(app) {
         email: key,
         phone,
         name: name || phone,
-        role: 'athlete',
+        role,
         salt,
         hash,
         coachId: null,
@@ -367,6 +390,7 @@ function mountPlatform(app) {
         bundle: {},
       };
       data.users[key] = user;
+      store.ensureCoachRecord(data, user);
     } else if (!user) {
       return res.status(404).json({ error: 'اول ثبت‌نام کن' });
     }
@@ -456,8 +480,18 @@ function mountPlatform(app) {
     const ctx = authUser(req);
     if (!ctx) return res.status(401).json({ error: 'وارد شو' });
     const coachId = String(req.body.coachId || '');
-    const exists = ctx.data.coaches.some((c) => c.id === coachId);
-    if (!exists) return res.status(404).json({ error: 'مربی پیدا نشد' });
+    const coach = (ctx.data.coaches || []).find((c) => c.id === coachId);
+    if (!coach) return res.status(404).json({ error: 'مربی پیدا نشد' });
+    const email = String(ctx.user.email || '').trim().toLowerCase();
+    if (ctx.user.role === 'coach') {
+      return res.status(403).json({ error: 'خرید رژیم فقط برای ورزشکار است' });
+    }
+    if (email && String(coach.accountEmail || '').trim().toLowerCase() === email) {
+      return res.status(403).json({ error: 'رژیم صفحهٔ خودت را نمی‌خری' });
+    }
+    if (ctx.user.coachId === coachId && ctx.user.planTaken) {
+      return res.status(409).json({ error: 'این رژیم را قبلاً خریدی' });
+    }
     ctx.user.coachId = coachId;
     ctx.user.planTaken = true;
     store.save(ctx.data);
@@ -517,6 +551,62 @@ function mountPlatform(app) {
     const coach = data.coaches.find((item) => item.id === req.params.id);
     if (!coach) return res.status(404).json({ error: 'مربی پیدا نشد' });
     res.json({ coach: publicCoach(coach, data) });
+  });
+
+  app.post('/api/coaches/:id/self', uploadDraft.fields([
+    { name: 'photo', maxCount: 1 },
+    { name: 'plan', maxCount: 1 },
+  ]), (req, res) => {
+    const ctx = requireCoachOwner(req, res, req.params.id);
+    if (!ctx) return;
+    const coach = ctx.coach;
+    const text = (key, fallback, max) => {
+      const raw = req.body && req.body[key];
+      if (raw == null) return fallback;
+      return String(raw).replace(/\s+/g, ' ').trim().slice(0, max);
+    };
+    coach.name = text('name', coach.name, 80) || coach.name;
+    coach.title = text('title', coach.title || '', 80);
+    coach.specialty = text('specialty', coach.specialty || '', 120);
+    coach.style = text('style', coach.style || '', 200);
+    coach.audience = text('audience', coach.audience || '', 200);
+    coach.bio = text('bio', coach.bio || '', 800);
+    coach.planName = text('planName', coach.planName || '', 80);
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, 'videos')) {
+      let raw = req.body.videos;
+      if (typeof raw === 'string') {
+        try { raw = JSON.parse(raw); } catch { raw = []; }
+      }
+      const list = Array.isArray(raw) ? raw : [];
+      coach.videos = list.map((item) => ({
+        title: String(item?.title || '').replace(/\s+/g, ' ').trim().slice(0, 80),
+        url: String(item?.url || '').trim().slice(0, 300),
+      })).filter((item) => item.title && /^https:\/\//i.test(item.url)).slice(0, 8);
+    }
+    const photo = req.files?.photo?.[0];
+    if (photo) {
+      const ext = safeExt(photo.originalname, photo.mimetype);
+      if (!ext || !['.png', '.jpg', '.jpeg', '.webp', '.gif'].includes(ext)) {
+        return res.status(400).json({ error: 'عکس مربی را JPG یا PNG بگذار' });
+      }
+      fs.mkdirSync(COACH_PHOTO_DIR, { recursive: true });
+      const filename = `${coach.id}${ext === '.jpeg' ? '.jpg' : ext}`;
+      fs.writeFileSync(path.join(COACH_PHOTO_DIR, filename), photo.buffer);
+      coach.photo = `/assets/coaches/${filename}`;
+    }
+    const plan = req.files?.plan?.[0];
+    if (plan) {
+      const ext = safeExt(plan.originalname, plan.mimetype);
+      if (!ext) return res.status(400).json({ error: 'فایل رژیم باید متن، PDF یا عکس باشد' });
+      fs.mkdirSync(PUBLIC_PLAN_DIR, { recursive: true });
+      const publicName = `${coach.id}${ext}`;
+      fs.writeFileSync(path.join(PUBLIC_PLAN_DIR, publicName), plan.buffer);
+      coach.planFile = `/assets/plans/${publicName}`;
+      coach.planPublished = true;
+      if (!coach.planName) coach.planName = `رژیم ${coach.name}`;
+    }
+    store.save(ctx.data);
+    res.json({ coach: publicCoach(coach, ctx.data) });
   });
 
   app.post('/api/coaches/:id/reviews', (req, res) => {

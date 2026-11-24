@@ -229,7 +229,7 @@
         el.hidden = !viewer?.admin;
       });
       document.querySelectorAll('[data-desk-only]').forEach((el) => {
-        el.hidden = !(viewer?.admin || viewer?.coachDeskId);
+        el.hidden = !(viewer?.admin || viewer?.coachDeskId || viewer?.role === 'coach');
       });
     }
     paintRolePills(user);

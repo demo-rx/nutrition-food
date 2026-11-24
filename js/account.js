@@ -106,6 +106,7 @@ const HNP = (() => {
       admin: Boolean(user.admin),
       token: payload.token,
       coachId: user.coachId,
+      coachDeskId: user.coachDeskId || null,
       subscriptionUntil: user.subscriptionUntil,
       premium: user.subscribed,
       profile: user.profile || {},
@@ -262,7 +263,9 @@ const HNP = (() => {
       throw new Error(typeof I18N !== 'undefined' ? I18N.t('auth.badPass') : 'Password too short.');
     }
 
-    const payload = { email: key, password, name, phone, role: 'athlete' };
+    const role = options?.role === 'coach' ? 'coach' : 'athlete';
+    const payload = { email: key, password, name, phone, role };
+    setRole(role);
     try {
       let res;
       if (mode === 'signup') {
@@ -335,9 +338,11 @@ const HNP = (() => {
     return data;
   }
 
-  async function verifyPhoneOtp(phone, code, name, mode) {
+  async function verifyPhoneOtp(phone, code, name, mode, role) {
     const normalized = normalizePhone(phone);
     if (!normalized) throw new Error('شماره موبایل را بنویس.');
+    const asCoach = role === 'coach';
+    if (mode === 'signup') setRole(asCoach ? 'coach' : 'athlete');
     const res = await fetch('/api/auth/otp/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -345,6 +350,7 @@ const HNP = (() => {
         phone: normalized,
         code,
         name,
+        role: asCoach ? 'coach' : 'athlete',
         mode: mode === 'signup' ? 'signup' : 'login',
       }),
     });

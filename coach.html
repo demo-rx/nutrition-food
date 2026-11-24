@@ -14,22 +14,33 @@
     <header class="bmi-like">
       <a href="coaches.html" class="back">بازگشت</a>
       <h1 id="title">مربی</h1>
+      <span class="own-pen-slot" id="title-pen" hidden></span>
       <span class="header-spacer" aria-hidden="true"></span>
     </header>
     <main class="pad">
-      <img class="coach-photo lg" id="photo" alt="" hidden>
+      <p class="own-chip" id="own-chip" hidden>صفحهٔ خودت</p>
+      <div class="photo-wrap" id="photo-wrap">
+        <img class="coach-photo lg" id="photo" alt="" hidden>
+        <span class="own-pen-fab" id="photo-pen" hidden></span>
+      </div>
+      <input id="own-photo" type="file" accept="image/*" hidden>
+      <input id="own-plan" type="file" accept=".txt,text/plain,application/pdf,image/*" hidden>
       <p class="coach-rate" id="rate"></p>
       <section class="price-card" id="diet">
-        <h2>خرید برنامه رژیم</h2>
+        <h2 id="diet-head">خرید برنامه رژیم</h2>
         <p id="diet-name"></p>
-        <strong id="diet-price">۹۹٬۰۰۰ تومان</strong>
-        <button type="button" class="btn btn-primary" id="take">خرید و دریافت رژیم</button>
+        <div id="diet-buy">
+          <strong id="diet-price">۹۹٬۰۰۰ تومان</strong>
+          <button type="button" class="btn btn-primary" id="take">خرید و دریافت رژیم</button>
+          <p class="note" id="diet-buy-note">بعد از خرید فایل رژیم مال تو می‌شود. محتوای رژیم اینجا نشان داده نمی‌شود و برنامهٔ غذایی خودبه‌خود عوض نمی‌شود.</p>
+        </div>
         <p class="note" id="diet-wait" hidden>رژیم این مربی هنوز منتشر نشده.</p>
-        <p class="note">بعد از خرید فایل رژیم مال تو می‌شود. محتوای رژیم اینجا نشان داده نمی‌شود و برنامهٔ غذایی خودبه‌خود عوض نمی‌شود.</p>
+        <button type="button" class="btn btn-secondary" id="own-plan-pick" hidden>گذاشتن فایل رژیم</button>
         <div class="coach-file" id="file-box" hidden></div>
         <p id="msg" class="note" hidden></p>
       </section>
       <div class="coach-about" id="about"></div>
+      <p class="note" id="own-msg" hidden></p>
       <p id="count" class="count"></p>
       <div class="ad-slot" data-slot="coach-banner"></div>
       <section class="price-card" id="reviews">
@@ -58,10 +69,56 @@
     const id = new URLSearchParams(location.search).get('id');
     const token = () => (HNP.currentUser() || {}).token;
     let reviewStars = 5;
+    let isMine = false;
     function esc(value) {
       return String(value || '').replace(/[&<>"']/g, (ch) => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
       }[ch]));
+    }
+    const PEN = '<svg class="own-pen" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
+    function live(key, value, placeholder) {
+      const text = String(value || '').trim();
+      const shown = text || (isMine ? placeholder : '');
+      if (!shown) return '';
+      const empty = !text && isMine;
+      const pen = isMine ? PEN : '';
+      return `<span class="own-live${empty ? ' own-empty' : ''}" data-key="${key}" contenteditable="${isMine ? 'plaintext-only' : 'false'}">${esc(shown)}</span>${pen}`;
+    }
+    function fieldValue(key) {
+      const el = document.querySelector(`[data-key="${key}"]`);
+      if (!el) return '';
+      const text = el.textContent.trim();
+      if (el.classList.contains('own-empty')) return '';
+      return text;
+    }
+    function collectVideos() {
+      return Array.from(document.querySelectorAll('#videos .video-card')).map((card) => ({
+        title: (card.querySelector('[data-video="title"]') || {}).textContent || '',
+        url: (card.querySelector('[data-video="url"]') || {}).textContent || '',
+      })).map((item) => ({
+        title: String(item.title || '').trim(),
+        url: String(item.url || '').trim(),
+      })).filter((item) => item.title || item.url);
+    }
+    function showOwnMsg(text) {
+      const msg = document.getElementById('own-msg');
+      msg.hidden = !text;
+      msg.textContent = text || '';
+    }
+    async function saveOwn(extra) {
+      if (!isMine || !token()) return;
+      const body = extra instanceof FormData ? extra : new FormData();
+      body.set('name', document.getElementById('title').textContent.trim());
+      body.set('title', fieldValue('title'));
+      body.set('specialty', fieldValue('specialty'));
+      body.set('style', fieldValue('style'));
+      body.set('audience', fieldValue('audience'));
+      body.set('bio', fieldValue('bio'));
+      body.set('planName', document.getElementById('diet-name').textContent.trim());
+      body.set('videos', JSON.stringify(collectVideos()));
+      const saved = await HNP_COACHES.saveOwnCoach(id, body);
+      showOwnMsg(saved.ok ? '' : (saved.error || 'ذخیره نشد'));
+      if (saved.ok && extra instanceof FormData) await load();
     }
     function paintStars() {
       document.querySelectorAll('#star-pick button').forEach((btn) => {
@@ -88,7 +145,7 @@
       }
       document.getElementById('title').textContent = c.name;
       const photo = document.getElementById('photo');
-      if (c.photo) { photo.hidden = false; photo.src = c.photo; photo.alt = c.name; }
+      photo.alt = c.name;
       const reviewAvg = c.reviews?.length
         ? Math.round((c.reviews.reduce((sum, item) => sum + item.stars, 0) / c.reviews.length) * 10) / 10
         : null;
@@ -96,43 +153,121 @@
         ? `★ ${reviewAvg} از ۵ · ${c.reviews.length} نظر`
         : (c.rating ? `★ ${c.rating} از ۵` : '');
       paintReviews(c.reviews);
+      const viewer = HNP.currentUser() || {};
+      let deskId = viewer.coachDeskId || '';
+      let meUser = null;
+      if (viewer.token) {
+        try {
+          const me = await fetch('/api/me', { headers: { Authorization: 'Bearer ' + viewer.token } });
+          const data = await me.json();
+          meUser = data.user || null;
+          if (meUser?.coachDeskId) deskId = meUser.coachDeskId;
+        } catch {
+          /* keep session */
+        }
+      }
+      isMine = Boolean(viewer.token && deskId && deskId === c.id);
+      if (c.photo) {
+        photo.hidden = false;
+        photo.src = c.photo;
+      } else if (isMine) {
+        photo.hidden = false;
+        photo.removeAttribute('src');
+      } else {
+        photo.hidden = true;
+      }
+      document.getElementById('own-chip').hidden = !isMine;
+      document.getElementById('reviews').hidden = isMine;
+      document.getElementById('count').hidden = isMine;
+      document.getElementById('rate').hidden = isMine;
+      const ad = document.querySelector('.ad-slot');
+      if (ad) ad.hidden = isMine;
+      document.getElementById('title-pen').hidden = !isMine;
+      document.getElementById('title-pen').innerHTML = isMine ? PEN : '';
+      document.getElementById('photo-pen').hidden = !isMine;
+      document.getElementById('photo-pen').innerHTML = isMine ? PEN : '';
+      document.getElementById('title').contentEditable = isMine ? 'plaintext-only' : 'false';
+      document.getElementById('title').classList.toggle('own-live', isMine);
+      photo.classList.toggle('own-live', isMine);
       document.getElementById('about').innerHTML = [
-        c.specialty ? `<p><strong>تخصص:</strong> ${c.specialty}</p>` : '',
-        c.style ? `<p><strong>سبک رژیم:</strong> ${c.style}</p>` : '',
-        c.audience ? `<p><strong>برای چه کسی:</strong> ${c.audience}</p>` : '',
-        c.bio ? `<p>${c.bio}</p>` : '',
+        `<p><strong>عنوان:</strong> ${live('title', c.title, 'مثلاً مربی تغذیه')}</p>`,
+        `<p><strong>تخصص:</strong> ${live('specialty', c.specialty, 'تخصص را بنویس')}</p>`,
+        `<p><strong>سبک رژیم:</strong> ${live('style', c.style, 'سبک رژیم را بنویس')}</p>`,
+        `<p><strong>برای چه کسی:</strong> ${live('audience', c.audience, 'مخاطب را بنویس')}</p>`,
+        `<p>${live('bio', c.bio, 'درباره خودت بنویس')}</p>`,
       ].join('');
+      if (!isMine) {
+        document.querySelectorAll('#about p').forEach((p) => {
+          if (!p.textContent.replace(/عنوان:|تخصص:|سبک رژیم:|برای چه کسی:/g, '').trim()) p.remove();
+        });
+      }
       document.getElementById('count').textContent = `${c.athleteCount} ورزشکار در حال حاضر از رژیم غذایی ${c.name} استفاده می‌کنند`;
       document.getElementById('diet-name').textContent = c.planName || 'فایل رژیم این مربی';
       const owned = HNP.isLoggedIn() && HNP.ownedPlans().some((item) => item.coachId === c.id);
       const take = document.getElementById('take');
       const wait = document.getElementById('diet-wait');
+      const isCoachViewer = Boolean(
+        isMine
+        || viewer.role === 'coach'
+        || meUser?.role === 'coach'
+        || HNP.getRole() === 'coach'
+        || viewer.coachDeskId
+        || meUser?.coachDeskId
+      );
+      const showBuy = !isCoachViewer;
+      document.getElementById('diet').hidden = !isMine && !showBuy;
+      document.getElementById('own-plan-pick').hidden = !isMine;
+      document.getElementById('diet-buy').hidden = !showBuy;
+      document.getElementById('diet-head').textContent = isMine ? 'فایل رژیم' : 'خرید برنامه رژیم';
+      take.hidden = !showBuy || owned || !c.planFile;
+      document.getElementById('diet-price').hidden = !showBuy || owned || !c.planFile;
       if (!c.planFile) {
-        take.hidden = true;
-        document.getElementById('diet-price').hidden = true;
         wait.hidden = false;
-        document.getElementById('diet-name').textContent = 'رژیم این مربی هنوز منتشر نشده';
+        wait.textContent = isMine
+          ? 'فایل رژیم را با دکمهٔ پایین بگذار. نام رژیم را با قلم عوض کن.'
+          : 'رژیم این مربی هنوز منتشر نشده.';
+        document.getElementById('diet-name').textContent = isMine
+          ? (c.planName || 'نام رژیم را بنویس')
+          : 'رژیم این مربی هنوز منتشر نشده';
       } else {
-        wait.hidden = true;
-        take.hidden = owned;
-        document.getElementById('diet-price').hidden = owned;
-        take.textContent = HNP.isPremium() ? 'دریافت فایل رژیم' : 'خرید و دریافت رژیم — ۹۹٬۰۰۰ تومان';
+        wait.hidden = !isMine;
+        if (isMine) wait.textContent = 'برای عوض کردن فایل رژیم دکمهٔ پایین را بزن.';
+        if (showBuy && !owned) {
+          take.textContent = HNP.isPremium() ? 'دریافت فایل رژیم' : 'خرید و دریافت رژیم — ۹۹٬۰۰۰ تومان';
+        }
       }
       const box = document.getElementById('file-box');
-      if (owned && c.planFile) {
+      if (owned && c.planFile && !isMine) {
         box.hidden = false;
         box.innerHTML = `<p>این رژیم مال تو شد. برنامهٔ غذایی هنوز عوض نشده.</p><a class="btn btn-secondary" href="${c.planFile}" download>دانلود فایل رژیم</a><a class="btn btn-primary" href="plan.html">ببر در برنامهٔ غذایی</a>`;
       } else {
         box.hidden = true;
       }
-      document.getElementById('videos').innerHTML = (c.videos || []).map((v) => `
+      const videoCards = (c.videos || []).map((v, i) => `
         <div class="video-card">
-          <h3>${v.title}</h3>
-          <iframe src="${v.url}" title="${v.title}" allowfullscreen loading="lazy"></iframe>
+          <h3 class="${isMine ? 'own-live' : ''}" data-video="title" ${isMine ? 'contenteditable="plaintext-only"' : ''}>${esc(v.title)}${isMine ? PEN : ''}</h3>
+          ${isMine ? `<p class="note own-live" data-video="url" contenteditable="plaintext-only" dir="ltr">${esc(v.url)}</p>
+          <button type="button" class="btn btn-secondary own-video-drop" data-i="${i}">حذف فیلم</button>` : ''}
+          ${v.url ? `<iframe src="${esc(v.url)}" title="${esc(v.title)}" allowfullscreen loading="lazy"></iframe>` : ''}
         </div>
       `).join('');
+      const videoEmpty = isMine && !(c.videos || []).length
+        ? '<p class="note">عنوان فیلم را بنویس و لینک https یوتیوب را زیرش بگذار.</p>'
+        : '';
+      document.getElementById('videos').innerHTML = videoEmpty + videoCards + (isMine
+        ? '<button type="button" class="btn btn-secondary" id="own-video-add">گذاشتن فیلم</button>'
+        : '');
+      document.getElementById('diet-name').classList.toggle('own-live', isMine);
+      document.getElementById('diet-name').contentEditable = isMine ? 'plaintext-only' : 'false';
+      if (isMine && !document.getElementById('diet-name-pen')) {
+        document.getElementById('diet-name').insertAdjacentHTML('afterend', `<span id="diet-name-pen">${PEN}</span>`);
+      }
+      const namePen = document.getElementById('diet-name-pen');
+      if (namePen) namePen.hidden = !isMine;
     }
     async function claimDiet() {
+      if (isMine || (HNP.currentUser() || {}).role === 'coach' || HNP.getRole() === 'coach') return;
+      if (HNP.ownedPlans().some((item) => item.coachId === id)) return;
       const msg = document.getElementById('msg');
       const coach = await HNP_COACHES.getCoach(id);
       const claimed = await HNP_COACHES.claimCoach(id, token());
@@ -181,7 +316,60 @@
         await load();
       }
     });
+    document.getElementById('photo').addEventListener('click', () => {
+      if (isMine) document.getElementById('own-photo').click();
+    });
+    document.getElementById('own-plan-pick').addEventListener('click', () => {
+      document.getElementById('own-plan').click();
+    });
+    document.getElementById('diet-wait').addEventListener('click', () => {
+      if (isMine) document.getElementById('own-plan').click();
+    });
+    document.getElementById('own-photo').addEventListener('change', async () => {
+      const file = document.getElementById('own-photo').files[0];
+      if (!file) return;
+      const body = new FormData();
+      body.append('photo', file);
+      await saveOwn(body);
+    });
+    document.getElementById('own-plan').addEventListener('change', async () => {
+      const file = document.getElementById('own-plan').files[0];
+      if (!file) return;
+      const body = new FormData();
+      body.append('plan', file);
+      await saveOwn(body);
+    });
+    document.addEventListener('focusin', (event) => {
+      const el = event.target.closest('.own-live');
+      if (!el || !el.classList.contains('own-empty')) return;
+      el.textContent = '';
+      el.classList.remove('own-empty');
+    });
+    document.addEventListener('focusout', (event) => {
+      const el = event.target.closest('.own-live');
+      if (!el || !isMine) return;
+      setTimeout(() => { if (isMine) saveOwn(); }, 120);
+    });
+    document.getElementById('videos').addEventListener('click', async (event) => {
+      if (event.target.id === 'own-video-add') {
+        if (document.querySelectorAll('#videos .video-card').length >= 8) return;
+        const wrap = document.createElement('div');
+        wrap.className = 'video-card';
+        wrap.innerHTML = `<h3 class="own-live" data-video="title" contenteditable="plaintext-only">عنوان فیلم${PEN}</h3>
+          <p class="note own-live own-empty" data-video="url" contenteditable="plaintext-only" dir="ltr">https://</p>
+          <button type="button" class="btn btn-secondary own-video-drop">حذف فیلم</button>`;
+        event.target.before(wrap);
+        wrap.querySelector('[data-video="title"]').focus();
+        return;
+      }
+      if (event.target.closest('.own-video-drop')) {
+        event.target.closest('.video-card').remove();
+        await saveOwn();
+      }
+    });
     document.getElementById('take').addEventListener('click', async () => {
+      if (isMine || (HNP.currentUser() || {}).role === 'coach' || HNP.getRole() === 'coach') return;
+      if (HNP.ownedPlans().some((item) => item.coachId === id)) return;
       if (!HNP.isLoggedIn()) {
         location.href = 'login.html?next=' + encodeURIComponent('coach.html?id=' + id);
         return;

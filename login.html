@@ -23,6 +23,10 @@
           <button type="button" class="on" data-tab="in">ورود</button>
           <button type="button" data-tab="up">ثبت‌نام</button>
         </div>
+        <div class="login-seg login-role" id="role-seg" hidden>
+          <button type="button" class="on" data-role="athlete">ورزشکار</button>
+          <button type="button" data-role="coach">مربی</button>
+        </div>
         <label class="login-label" id="name-field" hidden>نام
           <span class="login-box"><input id="name" type="text" autocomplete="name"></span>
         </label>
@@ -68,10 +72,14 @@
     const otpField = document.getElementById('otp-field');
     const otpHint = document.getElementById('otp-hint');
     const go = document.getElementById('go');
-    const segs = document.querySelectorAll('.login-seg button');
+    const segs = document.querySelectorAll('.login-seg:not(.login-role) button');
+    const roleSeg = document.getElementById('role-seg');
+    const roleBtns = roleSeg.querySelectorAll('button');
+    let signupRole = 'athlete';
 
     function paint() {
       nameField.hidden = mode !== 'signup';
+      roleSeg.hidden = mode !== 'signup';
       emailField.hidden = !withEmail;
       phoneField.hidden = withEmail;
       passField.hidden = !withEmail;
@@ -100,6 +108,12 @@
         mode = btn.dataset.tab === 'up' ? 'signup' : 'login';
         otpSent = false;
         paint();
+      });
+    });
+    roleBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        roleBtns.forEach((item) => item.classList.toggle('on', item === btn));
+        signupRole = btn.dataset.role === 'coach' ? 'coach' : 'athlete';
       });
     });
     document.getElementById('use-email').addEventListener('click', () => {
@@ -137,7 +151,7 @@
             document.getElementById('email').value,
             document.getElementById('password').value,
             document.getElementById('name').value,
-            { mode }
+            { mode, role: mode === 'signup' ? signupRole : 'athlete' }
           );
           location.href = next;
           return;
@@ -158,7 +172,8 @@
           document.getElementById('phone').value,
           document.getElementById('otp').value,
           document.getElementById('name').value,
-          mode
+          mode,
+          mode === 'signup' ? signupRole : 'athlete'
         );
         otpAbort?.abort();
         location.href = next;

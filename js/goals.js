@@ -270,9 +270,8 @@ document.getElementById('step-toggle')?.addEventListener('click', () => {
 document.querySelectorAll('.goal-tabs .tab').forEach((btn) => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.goal-tabs .tab').forEach((el) => el.classList.toggle('active', el === btn));
-    document.querySelectorAll('[data-panel]').forEach((panel) => {
-      panel.hidden = panel.dataset.panel !== btn.dataset.tab;
-    });
+    const panel = document.querySelector(`[data-panel="${btn.dataset.tab}"]`);
+    panel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     if (btn.dataset.tab === 'heart') drawTrace();
   });
 });

@@ -224,6 +224,52 @@ function paintProgress(step, total, note, started) {
   label.textContent = text;
 }
 
+function isPdfLabFile(file) {
+  return /pdf/i.test(file.type || '') || /\.pdf$/i.test(file.name || '');
+}
+
+function loadPdfJs() {
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    script.onload = () => {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      resolve(window.pdfjsLib);
+    };
+    script.onerror = () => reject(new Error('خواندن PDF روی این صفحه آماده نشد. عکس بگذار.'));
+    document.head.appendChild(script);
+  });
+}
+
+async function pdfToImages(file) {
+  const pdfjsLib = await loadPdfJs();
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const count = Math.min(pdf.numPages || 1, 4);
+  const images = [];
+  for (let i = 1; i <= count; i += 1) {
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale: 1.35 });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    const blob = await new Promise((done) => canvas.toBlob(done, 'image/jpeg', 0.82));
+    if (blob) images.push(blob);
+  }
+  return images;
+}
+
+async function labFileToImages(file) {
+  if (isPdfLabFile(file)) return pdfToImages(file);
+  return [file];
+}
+
+function pagesLabOn() {
+  return Boolean(window.HNP_PAGES_VISION && window.HNP_PAGES_VISION.enabled());
+}
+
 async function readProgress(res, started) {
   const type = res.headers.get('content-type') || '';
   if (!type.includes('ndjson')) {
@@ -273,8 +319,21 @@ document.getElementById('lab-read').addEventListener('click', async () => {
       started,
     ), 1000);
     try {
-      const res = await fetch('/api/read-lab', { method: 'POST', body });
-      const data = await readProgress(res, started);
+      let data;
+      if (pagesLabOn()) {
+        paintProgress(0, 0, 'فایل را آماده می‌کنم', started);
+        const images = await labFileToImages(file);
+        if (!images.length) throw new Error('از این فایل عکس ساخته نشد');
+        data = await window.HNP_PAGES_VISION.readLabImages(images, (step, total, text) => {
+          paintProgress(step, total, text, started);
+        });
+        if (!(data.items || []).length) {
+          throw new Error('عددی از آزمایش خوانده نشد. عددها را پایین بنویس.');
+        }
+      } else {
+        const res = await fetch('/api/read-lab', { method: 'POST', body });
+        data = await readProgress(res, started);
+      }
       FIELDS.forEach((field) => {
         document.getElementById(`lab-${field.key}`).value = '';
       });

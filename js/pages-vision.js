@@ -449,5 +449,110 @@ ${lines.join('\n')}
     return validatePlateEstimate(parseModelJson(text));
   }
 
-  window.HNP_PAGES_VISION = { enabled, analyze, estimate };
+  const LAB_PROMPT = `This is a blood test report in Persian or English.
+Read every allowed marker you can actually see. Do not stop after the first number. Do not guess.
+Use the patient result, not the reference range printed beside it.
+Return ONLY JSON. The sample below shows the shape, not the patient's numbers:
+{"items":[{"key":"fbs","value":95,"unit":"mg/dL"},{"key":"chol","value":210,"unit":"mg/dL"},{"key":"hdl","value":55,"unit":"mg/dL"}]}
+Allowed keys:
+fbs = fasting glucose / قند ناشتا / FBS / Glucose
+hba1c = HbA1c
+chol = total cholesterol / کلسترول تام / Cholesterol
+ldl = LDL
+hdl = HDL
+tg = triglyceride / تری گلیسرید
+hb = hemoglobin / هموگلوبین (not HbA1c)
+vitd = 25-OH vitamin D / Vitamin D3 / ویتامین D (ng/mL)
+b12 = vitamin B12 / ویتامین B12
+ferritin = ferritin / فریتین
+tsh = TSH
+Do not skip vitamin D, B12, ferritin, or TSH when they are printed. Include every marker visible in the image. Skip a marker that is not there. value must be a number.`;
+
+  function canonLabKey(raw) {
+    const s = String(raw || '').toLowerCase();
+    if (/vitd|vitamin\s*d|vit\s*d|25\s*[- ]?oh|\bd3\b|ویتامین\s*د|ویتامین\s*دی/.test(s)) return 'vitd';
+    if (/b\s*12|b12|کوبالامین/.test(s)) return 'b12';
+    if (/ferritin|فریتین/.test(s)) return 'ferritin';
+    if (/\btsh\b|تیروئید/.test(s)) return 'tsh';
+    if (/hba1c|a1c|هموگلوبین\s*a/.test(s)) return 'hba1c';
+    if (/hdl/.test(s)) return 'hdl';
+    if (/ldl/.test(s)) return 'ldl';
+    if (/trig|تری|tg\b/.test(s)) return 'tg';
+    if (/chol|کلسترول/.test(s)) return 'chol';
+    if (/fbs|glucose|قند|glu\b|sugar/.test(s)) return 'fbs';
+    if (/hemoglobin|^hb$|هموگلوبین/.test(s)) return 'hb';
+    return '';
+  }
+
+  function normalizeLabItems(payload) {
+    const list = Array.isArray(payload) ? payload : payload?.items;
+    if (!Array.isArray(list)) return [];
+    const seen = new Set();
+    const items = [];
+    list.forEach((item) => {
+      const key = canonLabKey(item.key || item.name || item.label);
+      let value = Number(String(item.value ?? '').replace(',', '.'));
+      let unit = String(item.unit || '').slice(0, 20);
+      if (key === 'vitd' && /nmol/i.test(unit)) {
+        value /= 2.5;
+        unit = 'ng/mL';
+      }
+      if (!key || seen.has(key) || !Number.isFinite(value) || value <= 0 || value > 2000) return;
+      seen.add(key);
+      items.push({
+        key,
+        value: Math.round(value * 100) / 100,
+        unit,
+      });
+    });
+    return items;
+  }
+
+  function imageBlobToJpegDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(blob);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const maxSide = 1600;
+        let w = img.width;
+        let h = img.height;
+        const scale = Math.min(1, maxSide / Math.max(w, h, 1));
+        w = Math.max(1, Math.round(w * scale));
+        h = Math.max(1, Math.round(h * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        blobToDataUrl(blob).then(resolve).catch(reject);
+      };
+      img.src = url;
+    });
+  }
+
+  async function readLabImages(blobs, onProgress) {
+    const files = Array.isArray(blobs) ? blobs.filter(Boolean) : [];
+    if (!files.length) throw new Error('فایل آزمایش را بگذار');
+    const found = [];
+    const seen = new Set();
+    const total = files.length;
+    for (let i = 0; i < files.length; i += 1) {
+      if (typeof onProgress === 'function') onProgress(i, total, 'عکس را می‌خوانم');
+      const dataUrl = await imageBlobToJpegDataUrl(files[i]);
+      const { text } = await callWorker(LAB_PROMPT, dataUrl);
+      normalizeLabItems(parseModelJson(text)).forEach((item) => {
+        if (seen.has(item.key)) return;
+        seen.add(item.key);
+        found.push(item);
+      });
+    }
+    if (typeof onProgress === 'function') onProgress(total, total, 'خوانده شد');
+    return { items: found };
+  }
+
+  window.HNP_PAGES_VISION = { enabled, analyze, estimate, readLabImages };
 })();

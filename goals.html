@@ -24,44 +24,61 @@
     <main class="plan-main">
       <section class="view active">
         <div class="tabs goal-tabs">
-          <button type="button" class="tab active" data-tab="steps">قدم</button>
-          <button type="button" class="tab" data-tab="heart">ضربان</button>
+          <button type="button" class="tab active" data-tab="heart">ضربان</button>
+          <button type="button" class="tab" data-tab="steps">قدم</button>
           <button type="button" class="tab" data-tab="pressure">فشار</button>
-          <button type="button" class="tab" data-tab="sugar">قند</button>
+          <button type="button" class="tab" data-tab="sugar">قند خون</button>
         </div>
 
-        <div class="card" data-panel="steps">
+        <div class="card pulse-card" data-panel="heart">
+          <div class="pulse-monitor" id="goal-heart">
+            <div class="pulse-hero">
+              <div class="pulse-hero-copy">
+                <p class="pulse-kicker">آخرین ضربان قلب</p>
+                <p class="pulse-when" id="pulse-when"></p>
+                <p class="pulse-num" id="pulse-num">—</p>
+                <p class="pulse-unit">ضربان در دقیقه</p>
+                <p class="pulse-band" id="pulse-band">برای اندازه‌گیری شروع کن</p>
+                <p class="pulse-o2-line">اکسیژن <strong id="pulse-o2">—</strong></p>
+              </div>
+              <div class="pulse-orb" id="pulse-orb" aria-hidden="true">
+                <span class="pulse-ring"></span>
+                <span class="pulse-ring"></span>
+                <span class="pulse-ring"></span>
+                <svg class="pulse-heart" viewBox="0 0 64 64">
+                  <defs>
+                    <linearGradient id="heart-shine" x1="18" y1="8" x2="46" y2="56" gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stop-color="#fb7185"/>
+                      <stop offset="42%" stop-color="#f43f5e"/>
+                      <stop offset="100%" stop-color="#be123c"/>
+                    </linearGradient>
+                  </defs>
+                  <path fill="url(#heart-shine)" d="M32 54S8 38 8 22.5C8 14 14.5 10 21 10c4.6 0 8.5 2.4 11 6.2C34.5 12.4 38.4 10 43 10c6.5 0 13 4 13 12.5C56 38 32 54 32 54z"/>
+                  <path fill="#fff" opacity=".28" d="M21 13c-3.6 0-7.2 2.1-8.4 6.4 1.8-4.6 6.2-7.2 10.6-6.6C24.6 12.2 22.6 13 21 13z"/>
+                  <path fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M14 31h8l3-7 5 16 4-9h16"/>
+                </svg>
+              </div>
+            </div>
+            <canvas id="pulse-trace" class="pulse-trace" width="640" height="160" aria-hidden="true"></canvas>
+            <a class="btn btn-primary" id="pulse-start" href="goals.html">شروع اندازه‌گیری</a>
+          </div>
+          <p class="auth-note">اکسیژن از نور دوربین تخمین زده می‌شود، نه دستگاه پزشکی.</p>
+          <ul id="pulse-history" class="pulse-history" hidden></ul>
+          <div id="pulse-box" class="pulse-box" hidden>
+            <video id="pulse-video" playsinline muted autoplay></video>
+            <p id="pulse-torch" class="auth-note"></p>
+            <p id="pulse-status" class="auth-note">انگشت را کامل روی دوربین عقب بگذار.</p>
+            <button type="button" class="btn btn-secondary" id="pulse-stop">بستن دوربین</button>
+          </div>
+        </div>
+
+        <div class="card" data-panel="steps" hidden>
           <p class="pulse-num" id="step-count">۰</p>
           <p class="auth-note" id="step-goal-label">از ۸۰۰۰ قدم امروز</p>
           <div class="lab-progress"><span id="step-bar"></span></div>
           <button type="button" class="btn btn-primary" id="step-toggle">شروع شمارش</button>
           <p class="auth-note">گوشی را همراهت نگه دار. این شمارش تخمینی است، نه دستگاه پزشکی.</p>
           <p id="step-msg" class="auth-note" hidden></p>
-        </div>
-
-        <div class="card" data-panel="heart" hidden>
-          <div class="pulse-monitor" id="goal-heart">
-            <div class="pulse-readout">
-              <div>
-                <p class="pulse-num" id="pulse-num">—</p>
-                <span>ضربان</span>
-              </div>
-              <div>
-                <p class="pulse-num pulse-o2" id="pulse-o2">—</p>
-                <span>اکسیژن ٪</span>
-              </div>
-            </div>
-            <canvas id="pulse-trace" class="pulse-trace" width="640" height="160" aria-hidden="true"></canvas>
-          </div>
-          <a class="btn btn-primary" id="pulse-start" href="goals.html">اسکن ضربان و اکسیژن</a>
-          <p class="auth-note">اکسیژن از نور دوربین تخمین زده می‌شود، نه دستگاه پزشکی.</p>
-          <ul id="pulse-history" class="pulse-history" hidden></ul>
-          <div id="pulse-box" class="pulse-box" hidden>
-            <video id="pulse-video" playsinline muted autoplay></video>
-            <p id="pulse-torch" class="auth-note">چراغ دوربین</p>
-            <p id="pulse-status" class="auth-note">انگشت را کامل روی دوربین عقب بگذار.</p>
-            <button type="button" class="btn btn-secondary" id="pulse-stop">بستن دوربین</button>
-          </div>
         </div>
 
         <div class="card" data-panel="pressure" hidden>

@@ -100,6 +100,17 @@ const TRACE_MAX = 220;
 
 function showBpm(value) {
   document.getElementById('pulse-num').textContent = value ? String(value) : '—';
+  const band = document.getElementById('pulse-band');
+  if (!band) return;
+  const n = Number(value);
+  if (!value || !Number.isFinite(n)) {
+    band.textContent = 'برای اندازه‌گیری شروع کن';
+    band.classList.remove('is-warn');
+    return;
+  }
+  const normal = n >= 60 && n <= 100;
+  band.textContent = normal ? 'ضربان در محدوده طبیعی است' : 'خارج از محدوده معمول است';
+  band.classList.toggle('is-warn', !normal);
 }
 
 function showO2(value) {
@@ -119,25 +130,11 @@ function drawTrace() {
   }
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = '#101418';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
   ctx.fillRect(0, 0, width, height);
-  ctx.strokeStyle = 'rgba(251, 113, 133, 0.16)';
-  ctx.lineWidth = 1;
-  for (let x = 0; x <= width; x += 28 * ratio) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, height);
-    ctx.stroke();
-  }
-  for (let y = 0; y <= height; y += 28 * ratio) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(width, y);
-    ctx.stroke();
-  }
   ctx.beginPath();
   ctx.lineWidth = Math.max(2, 2.2 * ratio);
-  ctx.strokeStyle = '#fb7185';
+  ctx.strokeStyle = '#16a34a';
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
   if (traceValues.length < 2) {
@@ -185,9 +182,17 @@ function clearTrace() {
 
 function fillGoals() {
   const day = todayVitals();
-  showBpm('');
-  showO2('');
-  renderPulseHistory(loadPulseHistory());
+  const rows = loadPulseHistory();
+  renderPulseHistory(rows);
+  if (rows[0]?.heart) {
+    showBpm(rows[0].heart);
+    showO2(rows[0].spo2);
+  } else {
+    showBpm('');
+    showO2('');
+  }
+  const when = document.getElementById('pulse-when');
+  if (when) when.textContent = rows[0] ? historyWhen(rows[0].at) : '';
   document.getElementById('vital-sys').value = day.sys || '';
   document.getElementById('vital-dia').value = day.dia || '';
   document.getElementById('vital-sugar').value = day.sugar || '';
@@ -268,6 +273,7 @@ document.querySelectorAll('.goal-tabs .tab').forEach((btn) => {
     document.querySelectorAll('[data-panel]').forEach((panel) => {
       panel.hidden = panel.dataset.panel !== btn.dataset.tab;
     });
+    if (btn.dataset.tab === 'heart') drawTrace();
   });
 });
 
@@ -314,18 +320,21 @@ async function setTorch(track, on) {
   if (!track || track.readyState !== 'live') return false;
   const caps = track.getCapabilities?.() || {};
   if (caps.torch === false) return false;
+  let applied = false;
   const attempts = [{ advanced: [{ torch: on }] }, { torch: on }];
-  for (let round = 0; round < 4; round += 1) {
+  for (let round = 0; round < 6; round += 1) {
     for (const constraints of attempts) {
       try {
         await track.applyConstraints(constraints);
+        applied = true;
       } catch { /* این شکل از دستور چراغ را قبول نکرد */ }
       if (track.getSettings?.().torch === on) return true;
     }
     if (!pulseStream) return false;
-    await wait(250);
+    await wait(220);
   }
-  return track.getSettings?.().torch === on;
+  if (track.getSettings?.().torch === on) return true;
+  return applied && caps.torch !== false;
 }
 
 function stopPulse(keepTrace) {
@@ -344,6 +353,7 @@ function stopPulse(keepTrace) {
   }
   const video = document.getElementById('pulse-video');
   video.srcObject = null;
+  document.getElementById('pulse-orb')?.classList.remove('is-live');
   document.getElementById('pulse-box').hidden = true;
   document.getElementById('pulse-start').hidden = false;
   torchStatus('');
@@ -513,11 +523,13 @@ async function startPulse() {
   stopPulse();
   document.getElementById('pulse-box').hidden = false;
   document.getElementById('pulse-start').hidden = true;
+  document.getElementById('pulse-orb')?.classList.add('is-live');
   pulseStatus('دوربین عقب روشن می‌شود. انگشت را روی لنز بگذار.');
   torchStatus('دارم چراغ را روشن می‌کنم.');
   const attempts = [
-    { video: { facingMode: { exact: 'environment' }, width: { ideal: 320 }, height: { ideal: 240 } }, audio: false },
-    { video: { facingMode: { ideal: 'environment' }, width: { ideal: 320 }, height: { ideal: 240 } }, audio: false },
+    { video: { facingMode: { exact: 'environment' } }, audio: false },
+    { video: { facingMode: { ideal: 'environment' } }, audio: false },
+    { video: true, audio: false },
   ];
   let stream = null;
   let lastError = null;
@@ -531,6 +543,7 @@ async function startPulse() {
   }
   if (!stream) {
     document.getElementById('pulse-start').hidden = false;
+    document.getElementById('pulse-orb')?.classList.remove('is-live');
     pulseStatus(lastError && lastError.name === 'NotAllowedError'
       ? 'اجازه دوربین داده نشد.'
       : 'دوربین عقب باز نشد.');
@@ -546,7 +559,7 @@ async function startPulse() {
   });
   const torchOn = await setTorch(track, true);
   if (!pulseStream) return;
-  torchStatus(torchOn ? 'چراغ روشن است.' : 'این مرورگر فلاش را روشن نمی‌کند.');
+  torchStatus(torchOn ? 'چراغ روشن است. انگشت را روی لنز و چراغ بگذار.' : 'اگر تصویر تاریک است، انگشت را روی لنز عقب و چراغ بگذار. روی آیفون وب فلاش معمولاً روشن نمی‌شود.');
   pulseSamples = [];
   pulseCoveredSince = 0;
   pulseTimer = requestAnimationFrame(() => readPulseFrame(video));

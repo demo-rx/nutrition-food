@@ -108,3 +108,13 @@
   outline: none;
   border-color: var(--green-400);
 }
+
+.bmi-extra-kg {
+  margin: 0.35rem 0 0;
+  font-weight: 800;
+}
+
+.bmi-result.is-under .bmi-extra-kg { color: #1d4ed8; }
+.bmi-result.is-normal .bmi-extra-kg { color: var(--green-700); }
+.bmi-result.is-over .bmi-extra-kg { color: #c2410c; }
+.bmi-result.is-obese .bmi-extra-kg { color: #b91c1c; }

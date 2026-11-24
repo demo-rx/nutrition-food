@@ -24,6 +24,17 @@ function classifyBmi(bmi) {
   return 'obese';
 }
 
+function extraKg(heightCm, weightKg) {
+  const meters = heightCm / 100;
+  const healthyMax = 24.9 * meters * meters;
+  const healthyMin = 18.5 * meters * meters;
+  const over = Math.round((weightKg - healthyMax) * 10) / 10;
+  const under = Math.round((healthyMin - weightKg) * 10) / 10;
+  if (over > 0.05) return { kind: 'over', kg: over };
+  if (under > 0.05) return { kind: 'under', kg: under };
+  return { kind: 'normal', kg: 0 };
+}
+
 function bmiPinPct(bmi) {
   const bands = [[15, 18.5], [18.5, 25], [25, 30], [30, 40]];
   const x = Math.min(40, Math.max(15, bmi));
@@ -39,6 +50,7 @@ function bmiPinPct(bmi) {
 function renderBmi(heightCm, weightKg) {
   const bmi = Math.round((weightKg / (heightCm / 100) ** 2) * 10) / 10;
   const key = classifyBmi(bmi);
+  const extra = extraKg(heightCm, weightKg);
   const box = document.getElementById('bmi-result');
   const line = document.getElementById('bmi-result-line');
   const pin = document.getElementById('bmi-result-pin');
@@ -46,7 +58,15 @@ function renderBmi(heightCm, weightKg) {
   box.className = `bmi-result is-${key}`;
   line.className = `bmi-line is-${key}`;
   pin.style.left = `${bmiPinPct(bmi)}%`;
-  document.getElementById('bmi-result-num').textContent = String(bmi);
+  document.getElementById('bmi-result-num').textContent = `BMI: ${toPersianDigits(bmi)}`;
+  const extraEl = document.getElementById('bmi-extra-kg');
+  if (extra.kind === 'over') {
+    extraEl.textContent = `اضافه‌وزن: ${toPersianDigits(extra.kg)} کیلوگرم`;
+  } else if (extra.kind === 'under') {
+    extraEl.textContent = `کمبود وزن: ${toPersianDigits(extra.kg)} کیلوگرم`;
+  } else {
+    extraEl.textContent = 'اضافه‌وزن: ۰ کیلوگرم';
+  }
   document.getElementById('bmi-result-status').textContent = I18N.t(`bmi.${key}`);
   document.getElementById('bmi-result-advice').textContent = I18N.t(`bmi.${key}A`);
 }

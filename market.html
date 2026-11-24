@@ -34,33 +34,31 @@
       <div id="list"></div>
     </main>
   </div>
+  <script src="js/config.js"></script>
   <script src="js/account.js"></script>
   <script src="js/ads.js?v=2"></script>
   <script>
-    if (!HNP.currentUser()?.admin) {
-      location.replace('index.html');
-    }
     const COPY = {
       doctors: {
         title: 'دکتر تغذیه',
         kicker: 'مشاوره تخصصی',
         text: 'پزشک تغذیه را ببین و برای نوبت تماس بگیر.',
         buy: 'رزرو مشاوره',
-        image: '/assets/market/doctor.jpg',
+        image: 'assets/market/doctor.jpg',
       },
       recipes: {
         title: 'دستور پخت سالم',
         kicker: 'آشپزی سالم',
         text: 'دستور پخت بخر یا مال خودت را بفروش.',
         buy: 'خرید دستور پخت',
-        image: '/assets/market/dish.jpg',
+        image: 'assets/market/dish.jpg',
       },
       restaurants: {
         title: 'رستوران سلامت',
         kicker: 'غذای رژیم',
         text: 'رستوران‌های کم‌کالری و رژیم را پیدا کن.',
         buy: 'تماس با رستوران',
-        image: '/assets/market/restaurant.jpg',
+        image: 'assets/market/restaurant.jpg',
       },
     };
 
@@ -79,6 +77,19 @@
       }[ch]));
     }
 
+    function isStaticHost() {
+      const host = String(location.hostname || '');
+      return host.endsWith('github.io') || host.endsWith('workers.dev');
+    }
+
+    function publicAsset(src) {
+      const value = String(src || '');
+      if (!value) return '';
+      if (/^https?:/i.test(value)) return value;
+      if (value.startsWith('/')) return isStaticHost() ? value.slice(1) : value;
+      return value;
+    }
+
     function telHref(phone) {
       const digits = String(phone || '').replace(/\D/g, '');
       return digits ? 'tel:' + digits : '';
@@ -91,14 +102,26 @@
       document.getElementById('banner-kicker').textContent = copy.kicker;
       document.getElementById('banner-title').textContent = copy.title;
       document.getElementById('banner-text').textContent = copy.text;
-      document.getElementById('banner-img').src = copy.image;
-      document.getElementById('btn-sell').hidden = kind !== 'recipes';
+      document.getElementById('banner-img').src = publicAsset(copy.image);
+      document.getElementById('btn-sell').hidden = kind !== 'recipes' || isStaticHost();
       document.querySelectorAll('.market-tabs a').forEach((link) => {
         link.classList.toggle('active', link.dataset.kind === kind);
       });
-      const res = await fetch('/api/market/' + kind);
-      const data = await res.json();
-      const items = data.items || [];
+      let items = [];
+      if (!isStaticHost()) {
+        try {
+          const res = await fetch((window.HNP_API || '') + '/api/market/' + kind);
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && Array.isArray(data.items)) items = data.items;
+        } catch {
+          items = [];
+        }
+      }
+      if (!items.length) {
+        const res = await fetch('data/market.json');
+        const data = await res.json().catch(() => ({}));
+        items = Array.isArray(data[kind]) ? data[kind] : [];
+      }
       const box = document.getElementById('list');
       if (!items.length) {
         box.innerHTML = '<p class="note">هنوز موردی نیست.</p>';
@@ -116,14 +139,15 @@
             <em>${esc(item.bio)}</em>
             ${action}
           </span>`;
-        if (kind !== 'doctors' && item.photo) {
+        const photoSrc = publicAsset(item.photo);
+        if (kind !== 'doctors' && photoSrc) {
           return `<article class="coach-card market-hero">
-            <img class="market-hero-bg" src="${esc(item.photo)}" alt="">
+            <img class="market-hero-bg" src="${esc(photoSrc)}" alt="">
             ${info}
           </article>`;
         }
-        const photo = item.photo
-          ? `<img class="market-photo round" src="${esc(item.photo)}" alt="">`
+        const photo = photoSrc
+          ? `<img class="market-photo round" src="${esc(photoSrc)}" alt="">`
           : `<span class="market-photo round letter" aria-hidden="true">${esc(String(item.name || '؟').trim().slice(0, 1))}</span>`;
         return `<article class="coach-card">${photo}${info}</article>`;
       }).join('');
